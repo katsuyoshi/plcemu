@@ -27,8 +27,11 @@ class FxDevice
           @suffix = [a[0,2].to_i(16), a[2,2].to_i(16)].pack "c*"
           @suffix.strip!
           @number = a[4,8].to_i(16)
+        elsif /(X|Y)(.+)/ =~ a
+          @suffix = $1
+          @number = $2.to_i(p_adic_number)
         else
-          /(X|Y|M|L|S|B|F|T|C|D|W|R)(.+)/ =~ a
+          /(M|L|S|B|F|T|C|D|W|R)(.+)/ =~ a
           @suffix = $1
           @number = $2.to_i(p_adic_number)
         end
@@ -38,7 +41,9 @@ class FxDevice
   
   def p_adic_number
     case @suffix
-    when "X", "Y", "B", "W"
+    when "X", "Y"
+      8
+    when "B", "W"
       16
     else
       10
@@ -56,14 +61,16 @@ class FxDevice
 end
 
 =begin
-d = AnSDevice.new [0, 0, 0, 0, 32, 68]
+d = FxDevice.new [0, 0, 0, 0, 32, 68]
 p d.name
 p d.next_device.name
 
-p AnSDevice.new "D", 0
-p AnSDevice.new "D0"
-p AnSDevice.new "XF"
-p AnSDevice.new("XF").name
-p AnSDevice.new "4D2000000064".unpack("c*")
-p AnSDevice.new "4D2000000064"
+p FxDevice.new "D", 0
+p FxDevice.new "D0"
+p FxDevice.new "X10"
+p FxDevice.new("X10").name
+p FxDevice.new "4D2000000064".unpack("c*")
+p FxDevice.new "4D2000000064"
+p FxDevice.new "582000000011"
+p FxDevice.new("582000000011").name
 =end
