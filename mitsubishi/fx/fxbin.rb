@@ -100,7 +100,7 @@ class Fx < WEBrick::GenericServer
       end
       
       if done
-p buf
+p buf, buf.map{|c| c.to_s(16)}
 p @device_dict
         buf = []
         done = false
