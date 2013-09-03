@@ -8,7 +8,7 @@ MITSUBISHI
 
 FX (FX3U ENET)
 -------
-run with binary protocol
+Run with the binary protocol
 ```
 $ cd mitsubishi/fx
 $ ./fxbin.rb
@@ -18,13 +18,13 @@ The ascii version is not implemented now.
 
 AnS (AJ71E71)
 -------
-run with binary protocol
+Run with the binary protocol
 ```
 $ cd mitsubishi/ans
 $ ./ansbin.rb
 ```
 
-run with ascii protocol
+Run with the ascii protocol
 ```
 $ cd mitsubishi/ans
 $ ./ansascii.rb
