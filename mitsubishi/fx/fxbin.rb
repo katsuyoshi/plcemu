@@ -1,7 +1,7 @@
 #!/usr/bin/ruby
-# -*- coding: utf8 -*-
+# -*- coding: utf-8 -*-
 require 'webrick'
-require 'fxdevice'
+require './fxdevice'
 
 DEFAULT_PORT = 5010
 DEFAULT_STATUS_FROM_PLC = "D7989"
