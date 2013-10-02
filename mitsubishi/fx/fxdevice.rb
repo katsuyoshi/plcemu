@@ -58,6 +58,16 @@ class FxDevice
     d = self.class.new @suffix, @number + 1
     d
   end
+  
+  def bit_device?
+    case @suffix
+    when "X", "Y", "M", "S", "T", "C"
+      true
+    else
+      false
+    end
+  end
+  
 end
 
 =begin

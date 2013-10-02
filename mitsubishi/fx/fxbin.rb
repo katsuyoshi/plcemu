@@ -1,5 +1,6 @@
 #!/usr/bin/ruby
 # -*- coding: utf-8 -*-
+# Usage: ./fxbin.rb
 require 'webrick'
 require './fxdevice'
 
@@ -26,6 +27,7 @@ class Fx < WEBrick::GenericServer
 
       case buf[0]
       
+      # read bit device
       when 0
         next if buf.length < 12
         count = short_value buf[10,2]
@@ -42,7 +44,8 @@ class Fx < WEBrick::GenericServer
         end
         sock.write res.pack("c*")
         done = true
-        
+      
+      # write bit device
       when 2
         next if buf.length < 12
         count = short_value buf[10,2]
@@ -55,25 +58,34 @@ class Fx < WEBrick::GenericServer
           else
             @device_dict[d.name] = buf[12 + index] & 0x1 == 0 ? 0 : 1
           end
-          d = d.next_device
         end
         sock.write [buf[0] | 0x80, 0].pack("c*")
         done = true
       
+      # read word device
       when 1
         next if buf.length < 12
         count = short_value buf[10,2]
         d = FxDevice.new buf[4, 6]
         res = [buf[0] | 0x80, 0]
         count.times do |i|
-          v = @device_dict[d.name] || 0
+          v = 0
+          if d.bit_device?
+            16.times do |i|
+              v |= (((@device_dict[d.name] || 0) == 0 ? 0 : 1) << i)
+              d = d.next_device
+            end
+          else
+            v = @device_dict[d.name] || 0
+            d = d.next_device
+          end
           res << (v & 0xff)
           res << (v >> 8)
-          d = d.next_device
         end
         sock.write res.pack("c*")
         done = true
-        
+      
+      # write word device
       when 3
         next if buf.length < 12
         count = short_value buf[10,2]
@@ -81,26 +93,39 @@ class Fx < WEBrick::GenericServer
         d = FxDevice.new buf[4, 6]
         count.times do |i|
           v = short_value buf[12 + i * 2, 2]
-          @device_dict[d.name] = v
-          d = d.next_device
+          if d.bit_device?
+            16.times do |i|
+              @device_dict[d.name] = v & (1 << i) ? 1 : 0
+              d = d.next_device
+            end
+          else
+            @device_dict[d.name] = v
+            d = d.next_device
+          end
         end
-        sock.write [buf[0] | 0x80, 0].pack("c*")
+        res = [buf[0] | 0x80, 0]
+        sock.write res.pack("c*")
         done = true
 
+      # remote run
       when 0x13
-        @device_dict["M8000"] = 0
-        sock.write [buf[0] | 0x80, 0].pack("c*")
+        @device_dict["M8000"] = 1
+        res = [buf[0] | 0x80, 0]
+        sock.write res.pack("c*")
         done = true
       
+      # remote stop
       when 0x14
         @device_dict["M8000"] = 0
-        sock.write [buf[0] | 0x80, 0].pack("c*")
+        res = [buf[0] | 0x80, 0]
+        sock.write res.pack("c*")
         done = true
       
       end
       
       if done
-p buf, buf.map{|c| c.to_s(16)}
+p ">> #{buf.map{|c| ("0" + c.to_s(16))[-2, 2]}}"
+p "<< #{res.map{|c| ("0" + c.to_s(16))[-2, 2]}}"
 p @device_dict
         buf = []
         done = false
