@@ -79,8 +79,8 @@ class Fx < WEBrick::GenericServer
             v = @device_dict[d.name] || 0
             d = d.next_device
           end
+          res << (v & 0xff); v >>= 8
           res << (v & 0xff)
-          res << (v >> 8)
         end
         sock.write res.pack("c*")
         done = true
