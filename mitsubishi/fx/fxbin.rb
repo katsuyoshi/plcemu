@@ -124,8 +124,8 @@ class Fx < WEBrick::GenericServer
       end
       
       if done
-p ">> #{buf.map{|c| ("0" + c.to_s(16))[-2, 2]}}"
-p "<< #{res.map{|c| ("0" + c.to_s(16))[-2, 2]}}"
+        puts ">> #{buf.map{|c| ("0" + c.to_s(16).upcase)[-2, 2]}}"
+        puts "<< #{res.map{|c| ("0" + c.to_s(16).upcase)[-2, 2]}}"
 p @device_dict
         buf = []
         done = false
