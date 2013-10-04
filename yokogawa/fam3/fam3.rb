@@ -34,11 +34,20 @@ class Fam3 < WEBrick::GenericServer
       count = $5 ? $5.to_i : 0
       value = $7
       res = nil
+      
       case cmd
       when "WWR"
         count.times do |i|
-          @device_dict[d.name] = value[i * 4, 4].to_i(16)
-          d = d.next_device
+          v = value[i * 4, 4].to_i(16)
+          if d.bit_device?
+            16.times do |i|
+              @device_dict[d.name] = v & (1 << i) ? 1 : 0
+              d = d.next_device
+            end
+          else
+            @device_dict[d.name] = v
+            d = d.next_device
+          end
         end
         res = "1#{cpu_no}OK\r\n"
         sock.write res
@@ -54,9 +63,17 @@ class Fam3 < WEBrick::GenericServer
       when "WRD"
         res = "1#{cpu_no}OK"
         count.times do |i|
-          v = @device_dict[d.name] || 0
+          v = 0
+          if d.bit_device?
+            16.times do |i|
+              v |= (((@device_dict[d.name] || 0) == 0 ? 0 : 1) << i)
+              d = d.next_device
+            end
+          else
+            v = @device_dict[d.name] || 0
+            d = d.next_device
+          end
           res << ("000" + v.to_s(16))[-4, 4]
-          d = d.next_device
         end
         res << "\r\n"
         sock.write res
@@ -78,7 +95,7 @@ class Fam3 < WEBrick::GenericServer
       end
 
       puts "r< " + res.chomp if res
-      
+p @device_dict
       buf = ""
     end
     puts "Close"

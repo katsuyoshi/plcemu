@@ -11,7 +11,7 @@ class Fam3Device
       else
         /([A-Za-z]+)(.+)/ =~ a
         @suffix = $1
-        @number = $2.to_i(p_adic_number)
+        @number = $2.to_i(p_adic_number) - 1
       end
     end
   end
@@ -21,7 +21,7 @@ class Fam3Device
   end
   
   def name
-    @suffix + @number.to_s(p_adic_number).upcase
+    @suffix + (@number + 1).to_s(p_adic_number).upcase
   end
   
   def next_device
@@ -29,4 +29,13 @@ class Fam3Device
     d
   end
   
+  def bit_device?
+    case @suffix
+    when "X", "Y", "I", "E", "L", "M", "TU", "CU"
+      true
+    else
+      false
+    end
+  end
+
 end
