@@ -22,7 +22,8 @@ class Fx < WEBrick::GenericServer
     while true
       c = sock.getc
       break if c.nil? || c == ""
-      buf << c
+      
+      buf << c.bytes.first
       next if buf.length < 4
 
       case buf[0]
