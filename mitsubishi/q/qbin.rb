@@ -98,7 +98,7 @@ class Q < WEBrick::GenericServer
         d = QDevice.new buf[HEADER_LENGTH + 4, 4]
         count.times do |i|
           index = HEADER_LENGTH + 10 + i * 2
-          v = buf[index] || (buf[index + 1] << 8)
+          v = short_value(buf[index, 2])
           if d.bit_device?
             16.times do |i|
               @device_dict[d.name] = v & (1 << i) ? 1 : 0
