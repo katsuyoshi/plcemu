@@ -43,6 +43,7 @@ class Fam3 < WEBrick::GenericServer
             16.times do |i|
               @device_dict[d.name] = v & (1 << i) ? 1 : 0
               d = d.next_device
+              break if d.nil?
             end
           else
             @device_dict[d.name] = v
@@ -68,6 +69,7 @@ class Fam3 < WEBrick::GenericServer
             16.times do |i|
               v |= (((@device_dict[d.name] || 0) == 0 ? 0 : 1) << i)
               d = d.next_device
+              break if d.nil?
             end
           else
             v = @device_dict[d.name] || 0
