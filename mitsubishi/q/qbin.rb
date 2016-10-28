@@ -9,27 +9,27 @@ DEFAULT_STATUS_FROM_PLC = "D7989"
 
 
 class Q < WEBrick::GenericServer
-  
+
   HEADER_LENGTH = 11
-  
+
   def initialize config = {}, default = WEBrick::Config::General
     super
     @device_dict = {}
     @device_dict[DEFAULT_STATUS_FROM_PLC] = 1
   end
-  
+
   def run(sock)
     done = false
     buf = []
     while true
       c = sock.getc
       break if c.nil? || c == ""
-      
+
       buf << c.bytes.first
       next if buf.length < 15
 
       case buf[HEADER_LENGTH, 4]
-      
+
       # read bit device
       when [0x01, 0x04, 0x01, 0x00]
         next if buf.length < HEADER_LENGTH + 10
@@ -48,7 +48,7 @@ class Q < WEBrick::GenericServer
         end
         sock.write res.pack("c*")
         done = true
-      
+
       # write bit device
       when [0x01, 0x14, 0x01, 0x00]
         next if buf.length < HEADER_LENGTH + 10
@@ -62,11 +62,12 @@ class Q < WEBrick::GenericServer
           else
             @device_dict[d.name] = buf[index] & 0x1 == 0 ? 0 : 1
           end
+          d = d.next_device
         end
         res = [[0xd0, 0x00,  0x00,  0xff,  0xff, 0x03,  0x00],  [0x02, 0x00],  [0x00, 0x00]].flatten
         sock.write res.pack("c*")
         done = true
-      
+
       # read word device
       when [0x01, 0x04, 0x00, 0x00]
         next if buf.length < HEADER_LENGTH + 10
@@ -91,7 +92,7 @@ class Q < WEBrick::GenericServer
         end
         sock.write res.pack("c*")
         done = true
-      
+
       # write word device
       when [0x01, 0x14, 0x00, 0x00]
         next if buf.length < HEADER_LENGTH + 10
@@ -122,16 +123,16 @@ class Q < WEBrick::GenericServer
         res = [buf[0] | 0x80, 0]
         sock.write res.pack("c*")
         done = true
-      
+
       # remote stop
       when 0x14
         @device_dict["M8000"] = 0
         res = [buf[0] | 0x80, 0]
         sock.write res.pack("c*")
         done = true
-      
+
       end
-      
+
       if done
         puts ">> #{buf.map{|c| ("0" + c.to_s(16).upcase)[-2, 2]}}"
         puts "<< #{res.map{|c| ("0" + c.to_s(16).upcase)[-2, 2]}}"
@@ -139,18 +140,17 @@ p @device_dict
         buf = []
         done = false
       end
-      
+
     end
     puts "Close"
   end
-  
+
   def short_value a
     a[1] << 8 | a[0]
   end
-  
+
 end
 
 server = Q.new(:Port => DEFAULT_PORT)
 trap(:INT) { server.shutdown }
 server.start
-
