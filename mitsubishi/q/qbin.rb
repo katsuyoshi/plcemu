@@ -151,6 +151,6 @@ p @device_dict
 
 end
 
-server = Q.new(:Port => DEFAULT_PORT)
+server = Q.new(:Port => DEFAULT_PORT, :BindAddress => "0.0.0.0")
 trap(:INT) { server.shutdown }
 server.start
