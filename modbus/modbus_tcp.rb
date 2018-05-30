@@ -3,6 +3,7 @@
 # Usage: ./fam3.rb
 require 'webrick'
 require './modbus_device'
+require 'optparse'
 
 #DEFAULT_PORT = 502
 DEFAULT_PORT = 10000
@@ -30,13 +31,24 @@ EC_PROCESSING         = 0x04
 EC_CPU_NUMBER         = 0x0a
 EC_TIMEOUT            = 0x0b
 
+# extension types
+EXTENSION_YOKOGAWA_STARDOM    = "stardom"
+
+
+
 @unit_id = 1
 
+params = ARGV.getopts("e:", "extension:")
+
+@extension = params["e"] || params["extension"]
+
 class ModbusTcp < WEBrick::GenericServer
+
 
   def initialize config = {}, default = WEBrick::Config::General
     super
     @device_dict = {}
+    @extension = config[:extension]
     #@device_dict[DEFAULT_STATUS_FROM_PLC] = 1
   end
 
@@ -131,7 +143,6 @@ p @device_dict
       n = 0
       bytes.times do |i|
         v = buf[13 + i]
-p "*" * 80, [v, v.class, buf]
         8.times do |j|
           @device_dict[d.name] = (v & (1 << j)) != 0
           d = d.next_device
@@ -144,6 +155,27 @@ p "*" * 80, [v, v.class, buf]
     end
 
     def read_words buf, suffix
+      case @extension
+      when EXTENSION_YOKOGAWA_STARDOM
+        read_words_stardom buf, suffix
+      else
+        read_words_normal buf, suffix
+      end
+    end
+
+    def write_words buf, suffix
+      case @extension
+      when EXTENSION_YOKOGAWA_STARDOM
+        write_words_stardom buf, suffix
+      else
+        write_words_normal buf, suffix
+      end
+    end
+
+
+    # --- normal
+
+    def read_words_normal buf, suffix
       reg_no = buf[8,2].pack("C*").unpack("n").first
       count = buf[10,2].pack("C*").unpack("n").first
       d = ModbusDevice.new "#{suffix}#{reg_no}"
@@ -164,7 +196,7 @@ p "*" * 80, [v, v.class, buf]
       res
     end
 
-    def write_words buf, suffix
+    def write_words_normal buf, suffix
       reg_no = buf[8,2].pack("C*").unpack("n").first
       count = buf[10,2].pack("C*").unpack("n").first
       d = ModbusDevice.new "#{suffix}#{reg_no}"
@@ -178,9 +210,103 @@ p "*" * 80, [v, v.class, buf]
       res
     end
 
+    # --- stardom
+
+    def read_words_stardom buf, suffix
+      return read_words_normal buf, suffix unless suffix == "HR"
+      reg_no = buf[8,2].pack("C*").unpack("n").first
+      case reg_no
+      when 45001..46999
+        count = buf[10,2].pack("C*").unpack("n").first
+        d = ModbusDevice.new "#{suffix}#{reg_no}"
+        res = buf[0, 8]
+        values = []
+        count.times do |i|
+          v = @device_dict[d.name] || 0
+          values << v
+          #res << [v].pack("n").unpack("C*")
+          d = d.next_device
+        end
+        res << count * 4
+        values.each do |value|
+          res << [value].pack("N").unpack("C*")
+        end
+        res.flatten!
+        res[5] = res.size - 6
+        res
+      when 47001..48999
+        count = buf[10,2].pack("C*").unpack("n").first
+        d = ModbusDevice.new "#{suffix}#{reg_no}"
+        res = buf[0, 8]
+        values = []
+        count.times do |i|
+          v = @device_dict[d.name] || 0
+          values << v
+          #res << [v].pack("n").unpack("C*")
+          d = d.next_device
+        end
+        res << count * 4
+        values.each do |value|
+          res << [value].pack("g").unpack("C*")
+        end
+        res.flatten!
+        res[5] = res.size - 6
+        res
+      else
+        count = buf[10,2].pack("C*").unpack("n").first
+        d = ModbusDevice.new "#{suffix}#{reg_no}"
+        res = buf[0, 8]
+        values = []
+        count.times do |i|
+          v = @device_dict[d.name] || 0
+          values << v
+          #res << [v].pack("n").unpack("C*")
+          d = d.next_device
+        end
+        res << count * 2
+        values.each do |value|
+          res << [value].pack("n").unpack("c*")
+        end
+        res.flatten!
+        res[5] = res.size - 6
+        res
+      end
+    end
+
+    def write_words_stardom buf, suffix
+      return write_words_normal buf, suffix unless suffix == "HR"
+      reg_no = buf[8,2].pack("C*").unpack("n").first
+      case reg_no
+      when 45001..46999
+        count = buf[10,2].pack("C*").unpack("n").first
+        d = ModbusDevice.new "#{suffix}#{reg_no}"
+        res = buf[0, 12]
+        count.times do |i|
+          v = buf[13 + i * 4, 4].pack("C*").unpack("N").first
+          @device_dict[d.name] = v
+          d = d.next_device
+        end
+        res[5] = res.size - 6
+        res
+      when 47001..48999
+        count = buf[10,2].pack("C*").unpack("n").first
+        d = ModbusDevice.new "#{suffix}#{reg_no}"
+        res = buf[0, 12]
+        count.times do |i|
+          v = buf[13 + i * 4, 4].pack("C*").unpack("g").first
+          @device_dict[d.name] = v
+          d = d.next_device
+        end
+        res[5] = res.size - 6
+        res
+      else
+        return write_words_normal buf, suffix
+      end
+    end
+
 
 end
 
-server = ModbusTcp.new(:Port => DEFAULT_PORT, :BindAddress => "0.0.0.0")
+server = ModbusTcp.new(:Port => DEFAULT_PORT, :BindAddress => "0.0.0.0", extension:@extension)
 trap(:INT) { server.shutdown }
 server.start
