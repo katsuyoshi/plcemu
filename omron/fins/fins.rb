@@ -126,18 +126,18 @@ class Fins < WEBrick::GenericServer
           end
           res[7] = res.size - 8
           sock.write res.flatten.pack("c*")
-          
+
         when [06, 01]
           res << (running ? 1 : 0)
           res << 4
           res += [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]].flatten
           res[7] = res.size - 8
           sock.write res.pack("c*")
-        
+
         end
 
       end
-        
+
       puts ">> #{buf.map{|c| ("0" + c.to_s(16).upcase)[-2, 2]}}"
       puts "<< #{res.map{|c| ("0" + c.to_s(16).upcase)[-2, 2]}}"
 p @device_dict
