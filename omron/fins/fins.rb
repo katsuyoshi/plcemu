@@ -9,20 +9,20 @@ DEFAULT_STATUS_FROM_PLC = "D32761"
 
 
 class Fins < WEBrick::GenericServer
-  
+
   attr_accessor :server_node, :client_node, :running
-  
+
   def initialize config = {}, default = WEBrick::Config::General
     super
     @device_dict = {}
     @device_dict[DEFAULT_STATUS_FROM_PLC] = 1
     @server_node = 1
   end
-  
+
   def running
     @running  | true
   end
-  
+
   def run(sock)
     done = false
     buf = []
@@ -35,7 +35,7 @@ class Fins < WEBrick::GenericServer
 
       len = to_int(buf[4, 4])
       next if buf.length < 6 + len + 2
-      
+
       fins_frame_command = to_int(buf[8, 4])
       case fins_frame_command
       when 0
@@ -43,7 +43,7 @@ class Fins < WEBrick::GenericServer
         self.server_node += 1 if self.client_node == self.server_node
         res = ["FINS".bytes.to_a, [0, 0, 0, 0x10], [0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, self.client_node], [0, 0, 0, server_node]].flatten
         sock.write res.pack("c*")
-        
+
       when 2
         res = ["FINS".bytes.to_a, [0, 0, 0, 0x10], [0, 0, 0, 2], [0, 0, 0, 0]].flatten
         # 2:number of gateways
@@ -78,14 +78,14 @@ class Fins < WEBrick::GenericServer
           end
           res[7] = res.size - 8
           sock.write res.pack("c*")
-        
+
         # write device
         when [1, 2]
           d = FinsDevice.new body[2, 4]
           count = to_int body[6, 2]
           if d.bit_access
             cd = d.channel_device
-            v = @device_dict[d.name] || 0
+            v = @device_dict[cd.name] || 0
             count.times do |i|
               index = 8 + i
               if body[index] == 0
@@ -146,7 +146,7 @@ p @device_dict
     end
     puts "Close"
   end
-  
+
   def to_int a
     v = 0
     a.each do |e|
@@ -162,4 +162,3 @@ end
 server = Fins.new(:Port => DEFAULT_PORT)
 trap(:INT) { server.shutdown }
 server.start
-
